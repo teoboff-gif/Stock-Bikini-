@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stock Bikini</title>
+<style>
+:root { --coral:#E8634A; --deep:#1C1C2E; --mint:#27AE60; --gold:#F5A623; --sand:#FDF6EE; }
+* { box-sizing:border-box; margin:0; padding:0; }
+body { font-family:sans-serif; background:var(--sand); color:#222; }
+
+header { background:var(--deep); color:white; padding:20px 16px 32px; text-align:center; position:relative; }
+header::after { content:''; position:absolute; bottom:-1px; left:0; right:0; height:24px; background:var(--sand); clip-path:ellipse(50% 100% at 50% 100%); }
+header h1 { font-size:1.6rem; margin-bottom:2px; }
+header p { font-size:0.72rem; opacity:0.45; letter-spacing:2px; }
+
+.sync-bar { background:var(--deep); color:white; text-align:center; font-size:0.72rem; padding:4px; opacity:0.7; }
+.sync-bar.ok { background:#1a5c38; }
+.sync-bar.err { background:#7c1d1d; }
+
+.tabs { display:flex; gap:6px; padding:12px 12px 0; max-width:900px; margin:0 auto; flex-wrap:wrap; }
+.tab { flex:1; padding:9px 6px; border-radius:50px; border:none; font-size:0.8rem; font-weight:600; cursor:pointer; background:white; color:#888; box-shadow:0 2px 8px rgba(0,0,0,0.08); white-space:nowrap; }
+.tab.on { background:var(--deep); color:white; }
+
+.search-wrap { max-width:900px; margin:10px auto 0; padding:0 12px; }
+.search-box { display:flex; align-items:center; background:white; border-radius:50px; border:1.5px solid #eee; box-shadow:0 2px 10px rgba(0,0,0,0.07); overflow:hidden; }
+.search-input { flex:1; padding:11px 14px; border:none; font-size:0.9rem; font-family:sans-serif; outline:none; background:transparent; min-width:0; }
+.search-go { padding:10px 16px; border:none; background:var(--coral); color:white; font-size:1rem; cursor:pointer; }
+.search-clear { padding:10px 12px; border:none; background:transparent; color:#bbb; font-size:0.9rem; cursor:pointer; }
+
+.page { display:none; max-width:900px; margin:0 auto; padding:12px 12px 100px; }
+.page.on { display:block; }
+
+.fab { position:fixed; bottom:24px; right:18px; width:54px; height:54px; border-radius:50%; background:var(--coral); color:white; border:none; font-size:1.9rem; cursor:pointer; box-shadow:0 4px 20px rgba(232,99,74,0.5); z-index:100; display:flex; align-items:center; justify-content:center; line-height:1; }
+
+/* OVERLAY / MODAL */
+.overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:200; }
+.overlay.on { display:flex; align-items:flex-end; justify-content:center; }
+.modal { background:white; border-radius:20px 20px 0 0; padding:22px 16px 38px; width:100%; max-width:500px; max-height:92vh; overflow-y:auto; }
+.modal h3 { font-size:1.15rem; margin-bottom:14px; }
+.field { margin-bottom:13px; }
+.field label { display:block; font-size:0.73rem; font-weight:700; color:#999; text-transform:uppercase; margin-bottom:5px; }
+.field input, .field select { width:100%; padding:11px 12px; border-radius:10px; border:1.5px solid #eee; font-size:0.92rem; font-family:sans-serif; outline:none; }
+.field input:focus, .field select:focus { border-color:var(--coral); }
+.sizes-in { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; }
+.sz-block { background:#f5f5f5; border-radius:10px; padding:10px 6px; text-align:center; }
+.sz-block span { display:block; font-size:0.73rem; font-weight:700; margin-bottom:5px; color:#555; }
+.sz-block input { width:100%; text-align:center; padding:7px 2px; border-radius:8px; border:1.5px solid #e0e0e0; font-size:1rem; font-weight:700; font-family:sans-serif; outline:none; }
+.logge-chips { display:flex; flex-wrap:wrap; gap:6px; }
+.lchip { padding:7px 13px; border-radius:50px; border:1.5px solid #eee; background:white; font-size:0.8rem; cursor:pointer; color:#888; }
+.lchip.on { background:var(--deep); color:white; border-color:var(--deep); }
+.modal-acts { display:flex; gap:8px; margin-top:18px; }
+.btn-cancel { flex:1; padding:12px; border-radius:50px; border:1.5px solid #eee; background:white; font-size:0.88rem; cursor:pointer; font-family:sans-serif; }
+.btn-save { flex:2; padding:12px; border-radius:50px; border:none; background:var(--coral); color:white; font-size:0.88rem; font-weight:700; cursor:pointer; font-family:sans-serif; }
+
+/* SHOP CARD */
+.shop-card { background:white; border-radius:16px; margin-bottom:14px; overflow:hidden; box-shadow:0 2px 14px rgba(0,0,0,0.07); }
+.shop-top { padding:13px 14px 9px; display:flex; align-items:center; gap:10px; }
+.shop-top.c0 { border-bottom:3px solid var(--coral); background:#fff5f3; }
+.shop-top.c1 { border-bottom:3px solid #2980B9; background:#f0f7ff; }
+.shop-top.c2 { border-bottom:3px solid var(--gold); background:#fffbf0; }
+.shop-icon { font-size:1.5rem; }
+.shop-name-in { flex:1; font-size:0.98rem; font-weight:700; border:none; background:transparent; outline:none; font-family:sans-serif; color:#222; }
+.shop-subtotal { font-size:0.68rem; color:#aaa; }
+.shop-body { padding:10px 12px 12px; }
+
+.pblock { background:#f8f8f8; border-radius:10px; margin-bottom:7px; overflow:hidden; border:1px solid #eee; }
+.pblock.hidden { display:none; }
+.pname-row { display:flex; align-items:center; gap:6px; padding:7px 10px 5px; border-bottom:1px solid #eee; }
+.pname-in { flex:1; border:none; background:transparent; font-size:0.86rem; font-weight:600; font-family:sans-serif; outline:none; color:#333; min-width:0; }
+.pcat-row { display:flex; gap:5px; padding:4px 10px; background:#f0f0f0; border-bottom:1px solid #eee; flex-wrap:wrap; }
+.pcat-sel { font-size:0.7rem; border:1.5px solid #ddd; border-radius:20px; padding:2px 8px; font-family:sans-serif; background:white; outline:none; cursor:pointer; }
+.sizes-row { display:grid; grid-template-columns:1fr 1fr 1fr; }
+.scell { padding:6px 5px; border-right:1px solid #eee; display:flex; flex-direction:column; align-items:center; gap:3px; }
+.scell:last-child { border-right:none; }
+.slbl { font-size:0.66rem; font-weight:700; letter-spacing:1px; }
+.slbl.S { color:#2980B9; } .slbl.M { color:#E67E22; } .slbl.L { color:#8E44AD; }
+.qty-row { display:flex; align-items:center; gap:3px; }
+.qb { width:27px; height:27px; border-radius:50%; border:1.5px solid #ddd; background:white; font-size:1rem; cursor:pointer; display:flex; align-items:center; justify-content:center; font-family:sans-serif; }
+.qv { min-width:26px; text-align:center; font-size:0.9rem; font-weight:700; }
+.qv.z { color:#ddd; } .qv.lo { color:var(--gold); } .qv.ok { color:var(--mint); }
+.del-btn { width:22px; height:22px; border-radius:50%; border:none; background:transparent; color:#ccc; font-size:1rem; cursor:pointer; padding:0; flex-shrink:0; }
+
+.cat-sep { font-size:0.7rem; font-weight:700; color:#aaa; text-transform:uppercase; margin:11px 0 5px; padding:3px 2px; border-bottom:1.5px solid #eee; display:flex; align-items:center; gap:5px; }
+.cbadge { font-size:0.63rem; font-weight:700; padding:2px 7px; border-radius:20px; background:#eee; color:#666; }
+
+.add-prod-btn { display:flex; align-items:center; justify-content:center; gap:5px; margin-top:9px; background:none; border:1.5px dashed #ddd; border-radius:10px; padding:7px; width:100%; font-size:0.8rem; color:#bbb; cursor:pointer; font-family:sans-serif; }
+
+.no-results { text-align:center; padding:30px; color:#bbb; font-size:0.88rem; }
+
+/* SUMMARY */
+.summ-card { background:white; border-radius:16px; padding:16px 14px; box-shadow:0 2px 14px rgba(0,0,0,0.06); overflow-x:auto; }
+.summ-card h2 { font-size:1.05rem; margin-bottom:12px; }
+table { width:100%; border-collapse:collapse; font-size:0.78rem; min-width:340px; }
+th { text-align:left; padding:7px 8px; background:#f0e8dc; color:#666; font-size:0.68rem; text-transform:uppercase; }
+th:first-child { border-radius:7px 0 0 7px; } th:last-child { border-radius:0 7px 7px 0; }
+td { padding:7px 8px; border-bottom:1px solid #f5f5f5; }
+.tot-row td { font-weight:700; border-top:2px solid #eee; border-bottom:none; }
+.csep td { background:#f8f8f8; font-size:0.68rem; color:#aaa; font-weight:700; text-transform:uppercase; padding:4px 8px; }
+.badge { font-size:0.65rem; padding:2px 6px; border-radius:20px; font-weight:600; }
+.b-ok { background:#e6f9f3; color:#1a8c63; }
+.b-lo { background:#fff3cd; color:#856404; }
+.b-out { background:#fde8e8; color:#c0392b; }
+.stag { display:inline-block; padding:1px 5px; border-radius:4px; font-size:0.66rem; font-weight:700; }
+.stag.S { background:#EBF5FB; color:#2980B9; }
+.stag.M { background:#FEF9E7; color:#E67E22; }
+.stag.L { background:#F5EEF8; color:#8E44AD; }
+.btns { display:flex; gap:8px; margin-top:12px; flex-wrap:wrap; }
+.abtn { padding:8px 14px; border-radius:50px; border:none; font-size:0.8rem; font-weight:600; cursor:pointer; font-family:sans-serif; }
+.abtn-p { background:var(--deep); color:white; }
+.abtn-s { background:#f0e8dc; color:#222; }
+.abtn-d { background:#fde8e8; color:#c0392b; }
+
+/* CATEGORIES PAGE */
+.cat-page-title { font-size:1.05rem; font-weight:700; margin-bottom:14px; display:flex; align-items:center; justify-content:space-between; }
+.cat-list { display:flex; flex-direction:column; gap:8px; margin-bottom:20px; }
+.cat-item { background:white; border-radius:12px; padding:12px 14px; display:flex; align-items:center; gap:10px; box-shadow:0 2px 8px rgba(0,0,0,0.06); }
+.cat-item-name { flex:1; font-size:0.92rem; font-weight:600; border:none; background:transparent; font-family:sans-serif; outline:none; color:#222; }
+.cat-del-btn { padding:5px 12px; border-radius:20px; border:none; background:#fde8e8; color:#c0392b; font-size:0.78rem; cursor:pointer; font-family:sans-serif; white-space:nowrap; }
+.cat-add-wrap { display:flex; gap:8px; }
+.cat-add-input { flex:1; padding:11px 14px; border-radius:12px; border:1.5px solid #eee; font-size:0.9rem; font-family:sans-serif; outline:none; background:white; }
+.cat-add-input:focus { border-color:var(--coral); }
+.cat-add-btn { padding:11px 18px; border-radius:12px; border:none; background:var(--coral); color:white; font-size:0.88rem; font-weight:600; cursor:pointer; font-family:sans-serif; white-space:nowrap; }
+.cat-section { background:white; border-radius:16px; padding:16px 14px; box-shadow:0 2px 14px rgba(0,0,0,0.06); margin-bottom:14px; }
+.cat-section h3 { font-size:0.9rem; font-weight:700; color:#888; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:12px; }
+
+.toast { position:fixed; bottom:88px; left:50%; transform:translateX(-50%) translateY(10px); background:var(--deep); color:white; padding:10px 20px; border-radius:10px; font-size:0.84rem; z-index:999; opacity:0; transition:opacity 0.2s, transform 0.2s; white-space:nowrap; pointer-events:none; }
+.toast.on { opacity:1; transform:translateX(-50%) translateY(0); }
+.loading { text-align:center; padding:40px; color:#aaa; font-size:0.9rem; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🩱 Stock</h1>
+  <p>MAGAZZINO — TRE LOGGE</p>
+</header>
+<div class="sync-bar" id="syncBar">Connessione in corso...</div>
+
+<div class="tabs">
+  <button class="tab on" id="tabStockBtn">📦 Stock</button>
+  <button class="tab" id="tabSummBtn">📊 Riepilogo</button>
+  <button class="tab" id="tabCatBtn">🏷 Categorie</button>
+</div>
+
+<div class="search-wrap">
+  <div class="search-box">
+    <input class="search-input" id="searchInput" type="text" placeholder="Cerca articolo..." autocomplete="off" autocorrect="off" spellcheck="false">
+    <button class="search-clear" id="searchClear" style="display:none">✕</button>
+    <button class="search-go" id="searchGo">🔍</button>
+  </div>
+</div>
+
+<!-- STOCK PAGE -->
+<div class="page on" id="pageStock">
+  <div id="shopsGrid"><div class="loading">Caricamento...</div></div>
+</div>
+
+<!-- SUMMARY PAGE -->
+<div class="page" id="pageSumm">
+  <div class="summ-card">
+    <h2>Riepilogo Totale</h2>
+    <table>
+      <thead><tr>
+        <th>Articolo</th><th>Categoria</th><th>Taglia</th><th>L1</th><th>L2</th><th>L3</th><th>Tot.</th><th>Stato</th>
+      </tr></thead>
+      <tbody id="summBody"></tbody>
+    </table>
+    <div class="btns">
+      <button class="abtn abtn-p" id="exportBtn">⬇ CSV</button>
+      <button class="abtn abtn-s" id="printBtn">🖨 Stampa</button>
+      <button class="abtn abtn-d" id="resetBtn">🗑 Reset</button>
+    </div>
+    <div style="font-size:0.7rem;color:#ccc;margin-top:8px;">☁️ Dati sincronizzati in tempo reale</div>
+  </div>
+</div>
+
+<!-- CATEGORIES PAGE -->
+<div class="page" id="pageCat">
+  <div class="cat-section">
+    <h3>Le tue categorie</h3>
+    <div class="cat-list" id="catList"></div>
+    <div class="cat-add-wrap">
+      <input class="cat-add-input" id="catAddInput" type="text" placeholder="Nome nuova categoria...">
+      <button class="cat-add-btn" id="catAddBtn">+ Aggiungi</button>
+    </div>
+  </div>
+  <div style="font-size:0.75rem;color:#bbb;padding:0 4px;">Le categorie sono condivise con tutti gli utenti. Puoi rinominare una categoria toccando il suo nome.</div>
+</div>
+
+<!-- NEW PRODUCT OVERLAY -->
+<div class="overlay" id="npOverlay">
+  <div class="modal">
+    <h3>➕ Nuovo Prodotto</h3>
+    <div class="field">
+      <label>Nome articolo</label>
+      <input type="text" id="npName" placeholder="es. Bikini Triangolo">
+    </div>
+    <div class="field">
+      <label>Categoria</label>
+      <select id="npCat"></select>
+    </div>
+    <div class="field">
+      <label>Quantita iniziale</label>
+      <div class="sizes-in">
+        <div class="sz-block"><span>S</span><input type="number" id="npS" value="0" min="0"></div>
+        <div class="sz-block"><span>M</span><input type="number" id="npM" value="0" min="0"></div>
+        <div class="sz-block"><span>L</span><input type="number" id="npL" value="0" min="0"></div>
+      </div>
+    </div>
+    <div class="field">
+      <label>Aggiungi a</label>
+      <div class="logge-chips" id="npLogge"></div>
+    </div>
+    <div class="modal-acts">
+      <button class="btn-cancel" id="npCancelBtn">Annulla</button>
+      <button class="btn-save" id="npSaveBtn">✓ Salva</button>
+    </div>
+  </div>
+</div>
+
+<button class="fab" id="fabBtn">+</button>
+<div class="toast" id="toast"></div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script>
+// ── FIREBASE ─────────────────────────────────────────────────────────────────
+var firebaseConfig = {
+  apiKey: "AIzaSyDXQ2zC7rga5ybt8F_zfP_MyVhmUfZB-lA",
+  authDomain: "stock-bikini.firebaseapp.com",
+  databaseURL: "https://stock-bikini-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "stock-bikini"
+};
+firebase.initializeApp(firebaseConfig);
+var db = firebase.database();
+var shopsRef = db.ref('shops');
+var catsRef  = db.ref('categories');
+
+// ── DEFAULT DATA ──────────────────────────────────────────────────────────────
+var DEFAULT_CATS = ['Top', 'Mutande', 'Costume Intero', 'Pareo'];
+var DEFAULT_SHOPS = [
+  {name:'Loggia 1', products:[
+    {name:'Bikini Triangolo', cat:'Top',    qty:{S:6,M:4,L:2}},
+    {name:'Slip Classico',    cat:'Mutande',qty:{S:5,M:4,L:2}}
+  ]},
+  {name:'Loggia 2', products:[
+    {name:'Bikini Triangolo', cat:'Top',    qty:{S:3,M:2,L:2}},
+    {name:'Slip Classico',    cat:'Mutande',qty:{S:4,M:3,L:2}}
+  ]},
+  {name:'Loggia 3', products:[
+    {name:'Bikini Triangolo', cat:'Top',    qty:{S:0,M:1,L:0}},
+    {name:'Slip Classico',    cat:'Mutande',qty:{S:3,M:2,L:1}}
+  ]}
+];
+
+// ── STATE ─────────────────────────────────────────────────────────────────────
+var shops = [];
+var categories = [];
+var searchQuery = '';
+var npSelShops = [];
+var writingShops = false;
+var writingCats  = false;
+var SIZES = ['S','M','L'];
+var LOW = 3;
+var ICONS = ['🏖️','🌊','☀️'];
+
+// ── SYNC ──────────────────────────────────────────────────────────────────────
+function syncOk() {
+  var b = document.getElementById('syncBar');
+  b.textContent = '✅ Connesso — dati in tempo reale';
+  b.className = 'sync-bar ok';
+}
+function syncErr() {
+  var b = document.getElementById('syncBar');
+  b.textContent = '❌ Offline — modifiche non salvate';
+  b.className = 'sync-bar err';
+}
+
+// Listen categories
+catsRef.on('value', function(snap) {
+  if (writingCats) return;
+  var data = snap.val();
+  if (data && Array.isArray(data) && data.length) {
+    categories = data;
+  } else {
+    categories = DEFAULT_CATS.slice();
+    writingCats = true;
+    catsRef.set(categories, function() { writingCats = false; });
+  }
+  renderCatPage();
+}, function() { syncErr(); });
+
+// Listen shops
+shopsRef.on('value', function(snap) {
+  if (writingShops) return;
+  var data = snap.val();
+  if (data && Array.isArray(data)) {
+    shops = data;
+    // ensure products array
+    for (var i = 0; i < shops.length; i++) {
+      if (!shops[i].products) shops[i].products = [];
+    }
+  } else {
+    shops = JSON.parse(JSON.stringify(DEFAULT_SHOPS));
+    writingShops = true;
+    shopsRef.set(shops, function() { writingShops = false; });
+  }
+  syncOk();
+  renderAll();
+}, function() { syncErr(); });
+
+function saveShops() {
+  writingShops = true;
+  shopsRef.set(shops, function() { writingShops = false; });
+  try { localStorage.setItem('bk6s', JSON.stringify(shops)); } catch(e) {}
+}
+function saveCats() {
+  writingCats = true;
+  catsRef.set(categories, function() { writingCats = false; });
+  try { localStorage.setItem('bk6c', JSON.stringify(categories)); } catch(e) {}
+}
+
+// ── TOAST ─────────────────────────────────────────────────────────────────────
+var toastT;
+function toast(msg) {
+  var el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('on');
+  clearTimeout(toastT);
+  toastT = setTimeout(function() { el.classList.remove('on'); }, 2500);
+}
+
+// ── TABS ──────────────────────────────────────────────────────────────────────
+function showPage(id) {
+  var pages = ['pageStock','pageSumm','pageCat'];
+  var btns  = ['tabStockBtn','tabSummBtn','tabCatBtn'];
+  for (var i = 0; i < pages.length; i++) {
+    document.getElementById(pages[i]).classList.remove('on');
+    document.getElementById(btns[i]).classList.remove('on');
+  }
+  document.getElementById(id).classList.add('on');
+}
+
+document.getElementById('tabStockBtn').addEventListener('click', function() {
+  showPage('pageStock');
+  this.classList.add('on');
+});
+document.getElementById('tabSummBtn').addEventListener('click', function() {
+  showPage('pageSumm');
+  this.classList.add('on');
+  renderSumm();
+});
+document.getElementById('tabCatBtn').addEventListener('click', function() {
+  showPage('pageCat');
+  this.classList.add('on');
+  renderCatPage();
+});
+
+// ── SEARCH ────────────────────────────────────────────────────────────────────
+var lastSearch = '';
+function doSearch() {
+  var v = document.getElementById('searchInput').value;
+  searchQuery = v.toLowerCase().trim();
+  document.getElementById('searchClear').style.display = searchQuery ? '' : 'none';
+  applyFilters();
+}
+setInterval(function() {
+  var v = document.getElementById('searchInput').value;
+  if (v !== lastSearch) { lastSearch = v; doSearch(); }
+}, 200);
+document.getElementById('searchInput').addEventListener('input', doSearch);
+document.getElementById('searchInput').addEventListener('keyup', doSearch);
+document.getElementById('searchGo').addEventListener('click', function() {
+  doSearch(); document.getElementById('searchInput').blur();
+});
+document.getElementById('searchClear').addEventListener('click', function() {
+  document.getElementById('searchInput').value = ''; lastSearch = ''; doSearch();
+});
+document.getElementById('searchInput').addEventListener('keydown', function(e) {
+  if (e.keyCode === 13) { doSearch(); this.blur(); }
+});
+
+function applyFilters() {
+  var blocks = document.querySelectorAll('.pblock');
+  var any = false;
+  for (var i = 0; i < blocks.length; i++) {
+    var b = blocks[i];
+    var nameOk = searchQuery === '' || b.getAttribute('data-name').toLowerCase().indexOf(searchQuery) !== -1;
+    var catOk  = searchQuery === '' || b.getAttribute('data-cat').toLowerCase().indexOf(searchQuery) !== -1;
+    var show = nameOk || catOk;
+    if (show) { b.classList.remove('hidden'); any = true; }
+    else { b.classList.add('hidden'); }
+  }
+  // hide empty cat separators
+  var seps = document.querySelectorAll('.cat-sep');
+  for (var i = 0; i < seps.length; i++) {
+    var sep = seps[i];
+    var next = sep.nextElementSibling;
+    var hasVis = false;
+    while (next && !next.classList.contains('cat-sep') && !next.classList.contains('add-prod-btn')) {
+      if (!next.classList.contains('hidden')) hasVis = true;
+      next = next.nextElementSibling;
+    }
+    sep.style.display = hasVis ? '' : 'none';
+  }
+  // no results
+  var noRes = document.getElementById('noResults');
+  if (searchQuery && !any) {
+    if (!noRes) {
+      var d = document.createElement('div');
+      d.className = 'no-results'; d.id = 'noResults';
+      d.textContent = 'Nessun articolo trovato per "' + searchQuery + '"';
+      document.getElementById('shopsGrid').appendChild(d);
+    }
+  } else {
+    if (noRes) noRes.parentNode.removeChild(noRes);
+  }
+}
+
+// ── RENDER ALL ────────────────────────────────────────────────────────────────
+function renderAll() {
+  renderShops();
+  if (document.getElementById('pageSumm').classList.contains('on')) renderSumm();
+}
+
+function renderShops() {
+  var grid = document.getElementById('shopsGrid');
+  grid.innerHTML = '';
+  for (var si = 0; si < shops.length; si++) {
+    grid.appendChild(makeShopCard(si));
+  }
+  applyFilters();
+}
+
+function makeShopCard(si) {
+  var shop = shops[si];
+  var total = 0;
+  for (var pi = 0; pi < shop.products.length; pi++) {
+    for (var zi = 0; zi < SIZES.length; zi++) total += shop.products[pi].qty[SIZES[zi]] || 0;
+  }
+  var card = document.createElement('div');
+  card.className = 'shop-card';
+  var top = document.createElement('div');
+  top.className = 'shop-top c' + si;
+  top.innerHTML = '<span class="shop-icon">' + ICONS[si] + '</span>' +
+    '<div style="flex:1;min-width:0">' +
+      '<input class="shop-name-in" value="' + esc(shop.name) + '" data-si="' + si + '">' +
+      '<div class="shop-subtotal">Totale: <strong>' + total + '</strong> pz</div>' +
+    '</div>';
+  card.appendChild(top);
+
+  var body = document.createElement('div');
+  body.className = 'shop-body';
+
+  // Group by category
+  for (var ci = 0; ci < categories.length; ci++) {
+    var cat = categories[ci];
+    var prods = [];
+    for (var pi = 0; pi < shop.products.length; pi++) {
+      if (shop.products[pi].cat === cat) prods.push(pi);
+    }
+    if (!prods.length) continue;
+    var sep = document.createElement('div');
+    sep.className = 'cat-sep';
+    sep.innerHTML = '<span class="cbadge">' + esc(cat) + '</span>';
+    body.appendChild(sep);
+    for (var pk = 0; pk < prods.length; pk++) body.appendChild(makeProd(si, prods[pk]));
+  }
+
+  // Products with unknown/deleted category
+  for (var pi = 0; pi < shop.products.length; pi++) {
+    var p = shop.products[pi];
+    if (categories.indexOf(p.cat) === -1) {
+      var sep2 = document.createElement('div');
+      sep2.className = 'cat-sep';
+      sep2.innerHTML = '<span class="cbadge">' + esc(p.cat || 'Altro') + '</span>';
+      body.appendChild(sep2);
+      body.appendChild(makeProd(si, pi));
+    }
+  }
+
+  var addBtn = document.createElement('button');
+  addBtn.className = 'add-prod-btn';
+  addBtn.setAttribute('data-si', si);
+  addBtn.textContent = '+ Aggiungi articolo';
+  body.appendChild(addBtn);
+  card.appendChild(body);
+  return card;
+}
+
+function makeProd(si, pi) {
+  var p = shops[si].products[pi];
+  var block = document.createElement('div');
+  block.className = 'pblock';
+  block.setAttribute('data-name', p.name || '');
+  block.setAttribute('data-cat', p.cat || '');
+  block.setAttribute('data-si', si);
+  block.setAttribute('data-pi', pi);
+
+  var nr = document.createElement('div');
+  nr.className = 'pname-row';
+  var nin = document.createElement('input');
+  nin.className = 'pname-in'; nin.value = p.name || '';
+  nin.setAttribute('data-si', si); nin.setAttribute('data-pi', pi); nin.setAttribute('data-f', 'name');
+  var del = document.createElement('button');
+  del.className = 'del-btn'; del.innerHTML = '&times;';
+  del.setAttribute('data-si', si); del.setAttribute('data-pi', pi); del.setAttribute('data-action', 'del');
+  nr.appendChild(nin); nr.appendChild(del);
+  block.appendChild(nr);
+
+  var cr = document.createElement('div');
+  cr.className = 'pcat-row';
+  var csel = document.createElement('select');
+  csel.className = 'pcat-sel';
+  csel.setAttribute('data-si', si); csel.setAttribute('data-pi', pi); csel.setAttribute('data-f', 'cat');
+  for (var ci = 0; ci < categories.length; ci++) {
+    var opt = document.createElement('option');
+    opt.value = categories[ci];
+    opt.textContent = categories[ci];
+    if (categories[ci] === p.cat) opt.selected = true;
+    csel.appendChild(opt);
+  }
+  cr.appendChild(csel);
+  block.appendChild(cr);
+
+  var sr = document.createElement('div');
+  sr.className = 'sizes-row';
+  for (var zi = 0; zi < SIZES.length; zi++) {
+    var sz = SIZES[zi];
+    var q = p.qty[sz] || 0;
+    var cls = q === 0 ? 'z' : q <= LOW ? 'lo' : 'ok';
+    var cell = document.createElement('div');
+    cell.className = 'scell';
+    cell.innerHTML = '<span class="slbl ' + sz + '">' + sz + '</span>' +
+      '<div class="qty-row">' +
+        '<button class="qb" data-si="'+si+'" data-pi="'+pi+'" data-sz="'+sz+'" data-d="-1">−</button>' +
+        '<span class="qv ' + cls + '">' + q + '</span>' +
+        '<button class="qb" data-si="'+si+'" data-pi="'+pi+'" data-sz="'+sz+'" data-d="1">+</button>' +
+      '</div>';
+    sr.appendChild(cell);
+  }
+  block.appendChild(sr);
+  return block;
+}
+
+// ── EVENT DELEGATION ──────────────────────────────────────────────────────────
+document.getElementById('shopsGrid').addEventListener('click', function(e) {
+  var qb = e.target.closest('.qb');
+  if (qb) {
+    var si=parseInt(qb.getAttribute('data-si')), pi=parseInt(qb.getAttribute('data-pi'));
+    var sz=qb.getAttribute('data-sz'), d=parseInt(qb.getAttribute('data-d'));
+    var cur = shops[si].products[pi].qty[sz] || 0;
+    shops[si].products[pi].qty[sz] = cur+d < 0 ? 0 : cur+d;
+    saveShops(); renderAll(); return;
+  }
+  var del = e.target.closest('[data-action="del"]');
+  if (del) {
+    var si=parseInt(del.getAttribute('data-si')), pi=parseInt(del.getAttribute('data-pi'));
+    if (confirm('Rimuovere "' + shops[si].products[pi].name + '"?')) {
+      shops[si].products.splice(pi,1); saveShops(); renderAll();
+    }
+    return;
+  }
+  var ab = e.target.closest('.add-prod-btn');
+  if (ab) {
+    var si = parseInt(ab.getAttribute('data-si'));
+    var defCat = categories.length ? categories[0] : 'Altro';
+    shops[si].products.push({name:'Nuovo articolo', cat:defCat, qty:{S:0,M:0,L:0}});
+    saveShops(); renderAll(); return;
+  }
+});
+
+document.getElementById('shopsGrid').addEventListener('change', function(e) {
+  var f = e.target.getAttribute('data-f');
+  if (!f || f === 'name') return;
+  var si=parseInt(e.target.getAttribute('data-si')), pi=parseInt(e.target.getAttribute('data-pi'));
+  shops[si].products[pi][f] = e.target.value;
+  saveShops(); renderAll();
+});
+
+document.getElementById('shopsGrid').addEventListener('input', function(e) {
+  if (e.target.getAttribute('data-f') === 'name') {
+    var si=parseInt(e.target.getAttribute('data-si')), pi=parseInt(e.target.getAttribute('data-pi'));
+    shops[si].products[pi].name = e.target.value;
+    saveShops();
+  }
+  if (e.target.classList.contains('shop-name-in')) {
+    var si = parseInt(e.target.getAttribute('data-si'));
+    shops[si].name = e.target.value;
+    saveShops();
+  }
+});
+
+// ── CATEGORIES PAGE ───────────────────────────────────────────────────────────
+function renderCatPage() {
+  var list = document.getElementById('catList');
+  list.innerHTML = '';
+  for (var ci = 0; ci < categories.length; ci++) {
+    list.appendChild(makeCatItem(ci));
+  }
+}
+
+function makeCatItem(ci) {
+  var item = document.createElement('div');
+  item.className = 'cat-item';
+  var inp = document.createElement('input');
+  inp.className = 'cat-item-name';
+  inp.value = categories[ci];
+  inp.setAttribute('data-ci', ci);
+  var btn = document.createElement('button');
+  btn.className = 'cat-del-btn';
+  btn.textContent = 'Elimina';
+  btn.setAttribute('data-ci', ci);
+  btn.setAttribute('data-action', 'delcat');
+  item.appendChild(inp);
+  item.appendChild(btn);
+  return item;
+}
+
+document.getElementById('catList').addEventListener('input', function(e) {
+  if (e.target.classList.contains('cat-item-name')) {
+    var ci = parseInt(e.target.getAttribute('data-ci'));
+    var oldName = categories[ci];
+    var newName = e.target.value.trim();
+    if (!newName) return;
+    categories[ci] = newName;
+    // update products with old name
+    for (var si = 0; si < shops.length; si++) {
+      for (var pi = 0; pi < shops[si].products.length; pi++) {
+        if (shops[si].products[pi].cat === oldName) shops[si].products[pi].cat = newName;
+      }
+    }
+    saveCats(); saveShops();
+  }
+});
+
+document.getElementById('catList').addEventListener('click', function(e) {
+  var btn = e.target.closest('[data-action="delcat"]');
+  if (!btn) return;
+  var ci = parseInt(btn.getAttribute('data-ci'));
+  var name = categories[ci];
+  if (!confirm('Eliminare la categoria "' + name + '"?\nGli articoli con questa categoria rimarranno ma senza categoria.')) return;
+  categories.splice(ci, 1);
+  saveCats(); renderCatPage(); renderAll();
+  toast('"' + name + '" eliminata');
+});
+
+document.getElementById('catAddBtn').addEventListener('click', function() {
+  var inp = document.getElementById('catAddInput');
+  var name = inp.value.trim();
+  if (!name) { toast('Inserisci il nome della categoria'); inp.focus(); return; }
+  if (categories.indexOf(name) !== -1) { toast('Categoria già esistente'); return; }
+  categories.push(name);
+  inp.value = '';
+  saveCats(); renderCatPage(); renderAll();
+  toast('"' + name + '" aggiunta!');
+});
+
+document.getElementById('catAddInput').addEventListener('keydown', function(e) {
+  if (e.keyCode === 13) document.getElementById('catAddBtn').click();
+});
+
+// ── SUMMARY ───────────────────────────────────────────────────────────────────
+function renderSumm() {
+  var tbody = document.getElementById('summBody');
+  tbody.innerHTML = '';
+  var grand = 0;
+  for (var ci = 0; ci < categories.length; ci++) {
+    var cat = categories[ci];
+    var names = [];
+    for (var si = 0; si < shops.length; si++) {
+      for (var pi = 0; pi < shops[si].products.length; pi++) {
+        var p = shops[si].products[pi];
+        if (p.cat === cat) {
+          var found = false;
+          for (var ni = 0; ni < names.length; ni++) { if (names[ni]===p.name){found=true;break;} }
+          if (!found) names.push(p.name);
+        }
+      }
+    }
+    if (!names.length) continue;
+    var sep = document.createElement('tr');
+    sep.className = 'csep';
+    sep.innerHTML = '<td colspan="8">' + esc(cat) + '</td>';
+    tbody.appendChild(sep);
+    for (var ni = 0; ni < names.length; ni++) {
+      for (var zi = 0; zi < SIZES.length; zi++) {
+        var sz = SIZES[zi]; var qtys=[]; var tot=0;
+        for (var si = 0; si < shops.length; si++) {
+          var q=0;
+          for (var pi=0; pi<shops[si].products.length; pi++) {
+            var p=shops[si].products[pi];
+            if (p.name===names[ni]&&p.cat===cat){q=p.qty[sz]||0;break;}
+          }
+          qtys.push(q); tot+=q;
+        }
+        grand+=tot;
+        var badge=tot===0?'<span class="badge b-out">Esaurito</span>':tot<=LOW?'<span class="badge b-lo">Basso</span>':'<span class="badge b-ok">OK</span>';
+        var tr=document.createElement('tr');
+        tr.innerHTML='<td>'+esc(names[ni])+'</td><td>'+esc(cat)+'</td><td><span class="stag '+sz+'">'+sz+'</span></td>'+
+          '<td>'+qtys[0]+'</td><td>'+qtys[1]+'</td><td>'+qtys[2]+'</td>'+
+          '<td><strong>'+tot+'</strong></td><td>'+badge+'</td>';
+        tbody.appendChild(tr);
+      }
+    }
+  }
+  var tr=document.createElement('tr');
+  tr.className='tot-row';
+  tr.innerHTML='<td colspan="6">TOTALE</td><td><strong>'+grand+'</strong></td><td></td>';
+  tbody.appendChild(tr);
+}
+
+// ── NEW PRODUCT MODAL ─────────────────────────────────────────────────────────
+document.getElementById('fabBtn').addEventListener('click', function() {
+  npSelShops = [];
+  document.getElementById('npName').value = '';
+  document.getElementById('npS').value = '0';
+  document.getElementById('npM').value = '0';
+  document.getElementById('npL').value = '0';
+
+  // populate categories
+  var catSel = document.getElementById('npCat');
+  catSel.innerHTML = '';
+  for (var i = 0; i < categories.length; i++) {
+    var opt = document.createElement('option');
+    opt.value = categories[i]; opt.textContent = categories[i];
+    catSel.appendChild(opt);
+  }
+
+  // populate logge
+  var loggeDiv = document.getElementById('npLogge');
+  loggeDiv.innerHTML = '<span class="lchip on" data-si="all">Tutte le logge</span>';
+  for (var i = 0; i < shops.length; i++) {
+    var chip = document.createElement('span');
+    chip.className = 'lchip'; chip.setAttribute('data-si', i); chip.textContent = shops[i].name;
+    loggeDiv.appendChild(chip);
+  }
+  document.getElementById('npOverlay').classList.add('on');
+  setTimeout(function() { document.getElementById('npName').focus(); }, 100);
+});
+
+document.getElementById('npLogge').addEventListener('click', function(e) {
+  var chip = e.target;
+  if (!chip.classList.contains('lchip')) return;
+  var si = chip.getAttribute('data-si');
+  if (si === 'all') {
+    npSelShops = [];
+    var chips = this.querySelectorAll('.lchip');
+    for (var i=0;i<chips.length;i++) chips[i].classList.remove('on');
+    chip.classList.add('on');
+  } else {
+    var idx=parseInt(si);
+    this.querySelector('[data-si="all"]').classList.remove('on');
+    if (chip.classList.contains('on')) {
+      chip.classList.remove('on');
+      for (var i=0;i<npSelShops.length;i++){if(npSelShops[i]===idx){npSelShops.splice(i,1);break;}}
+    } else {
+      chip.classList.add('on'); npSelShops.push(idx);
+    }
+    if (!npSelShops.length) { npSelShops=[]; this.querySelector('[data-si="all"]').classList.add('on'); }
+  }
+});
+
+document.getElementById('npCancelBtn').addEventListener('click', function() {
+  document.getElementById('npOverlay').classList.remove('on');
+});
+document.getElementById('npOverlay').addEventListener('click', function(e) {
+  if (e.target===this) this.classList.remove('on');
+});
+document.getElementById('npSaveBtn').addEventListener('click', function() {
+  var name = document.getElementById('npName').value.trim();
+  if (!name) { toast('Inserisci il nome!'); document.getElementById('npName').focus(); return; }
+  var cat = document.getElementById('npCat').value;
+  var s=parseInt(document.getElementById('npS').value)||0;
+  var m=parseInt(document.getElementById('npM').value)||0;
+  var l=parseInt(document.getElementById('npL').value)||0;
+  var targets = npSelShops.length===0 ? [] : npSelShops.slice();
+  if (!targets.length) { for(var i=0;i<shops.length;i++) targets.push(i); }
+  for (var ti=0;ti<targets.length;ti++) {
+    var si=targets[ti]; var exists=false;
+    for (var pi=0;pi<shops[si].products.length;pi++) {
+      if (shops[si].products[pi].name===name){exists=true;break;}
+    }
+    if (!exists) shops[si].products.push({name:name,cat:cat,qty:{S:s,M:m,L:l}});
+  }
+  saveShops(); renderAll();
+  document.getElementById('npOverlay').classList.remove('on');
+  toast('"'+name+'" aggiunto!');
+});
+
+// ── OTHER BUTTONS ─────────────────────────────────────────────────────────────
+document.getElementById('exportBtn').addEventListener('click', function() {
+  var rows=[['Categoria','Articolo','Taglia','L1','L2','L3','Totale']];
+  for (var ci=0;ci<categories.length;ci++) {
+    var cat=categories[ci]; var names=[];
+    for (var si=0;si<shops.length;si++) {
+      for (var pi=0;pi<shops[si].products.length;pi++) {
+        var p=shops[si].products[pi];
+        if (p.cat===cat){var f=false;for(var ni=0;ni<names.length;ni++){if(names[ni]===p.name){f=true;break;}}if(!f)names.push(p.name);}
+      }
+    }
+    for (var ni=0;ni<names.length;ni++) {
+      for (var zi=0;zi<SIZES.length;zi++) {
+        var sz=SIZES[zi];var qtys=[];var tot=0;
+        for (var si=0;si<shops.length;si++){var q=0;for(var pi=0;pi<shops[si].products.length;pi++){var p=shops[si].products[pi];if(p.name===names[ni]&&p.cat===cat){q=p.qty[sz]||0;break;}}qtys.push(q);tot+=q;}
+        rows.push([cat,names[ni],sz,qtys[0],qtys[1],qtys[2],tot]);
+      }
+    }
+  }
+  var csv='';for(var i=0;i<rows.length;i++)csv+=rows[i].join(';')+'\n';
+  var blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});
+  var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='stock.csv';
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+});
+document.getElementById('printBtn').addEventListener('click', function(){window.print();});
+document.getElementById('resetBtn').addEventListener('click', function() {
+  if (!confirm('Resettare tutti i dati?')) return;
+  shops=JSON.parse(JSON.stringify(DEFAULT_SHOPS));
+  categories=DEFAULT_CATS.slice();
+  saveShops(); saveCats(); renderAll(); renderCatPage();
+  toast('Dati resettati');
+});
+
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+</script>
+</body>
+</html>
